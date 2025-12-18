@@ -10,6 +10,34 @@ def save_data(df):
     except PermissionError:
         print("⚠️ Cảnh báo: Không thể tự động lưu vì file Excel đang mở!")
 
+def analysis(TX,GK,CK):
+    TB = round( TX * 0.1 + GK * 0.3 + CK * 0.6,2)
+    if TB >= 8.5: 
+        GPA = 4.0
+        HL = 'Xuất sắc'
+    elif TB >= 8.0: 
+        GPA = 3.5
+        HL = 'Khá giỏi'
+    elif TB >= 7.0: 
+        GPA = 3.0
+        HL = "Khá"
+    elif TB >= 6.5: 
+        GPA = 2.5
+        HL = 'Trung bình khá'
+    elif TB >= 5.5: 
+        GPA = 2.0
+        HL = 'Trung bình'
+    elif TB >= 5.0:
+        GPA = 1.5
+        HL = 'Trung bình yếu'
+    elif TB >= 4.0:
+        GPA = 1.0
+        HL = 'Yếu'
+    else: 
+        GPA = 0.0
+        HL = 'Kém'
+    return (TB, GPA, HL)
+
 def add_student(df):
     """Nhận DataFrame và trả về DataFrame mới sau khi thêm học sinh."""
     print("\n--- Thêm học sinh ---")
@@ -27,31 +55,7 @@ def add_student(df):
         GK = float(input("Nhập điểm giữa kỳ: "))
         CK = float(input("Nhập điểm cuối kỳ: "))
         DRL= float(input('Nhập điểm rèn luyện: '))
-        TB = round( TX * 0.1 + GK * 0.3 + CK * 0.6,2)
-        if TB >= 8.5: 
-            GPA = 4
-            HL = 'Xuất sắc'
-        elif TB >= 8: 
-            GPA = 3.5
-            HL = 'Khá giỏi'
-        elif TB >= 7: 
-            GPA = 3,
-            HL = "Khá"
-        elif TB >= 6.5: 
-            GPA = 2.5
-            HL = 'Trung bình khá'
-        elif TB >= 5.5: 
-            GPA = 2 
-            HL = 'Trung bình'
-        elif TB >= 5:
-            GPA = 1.5
-            HL = 'Trung bình yếu'
-        elif TB >= 4:
-            GPA = 1.0
-            HL = 'Yếu'
-        else: 
-            GPA = 0
-            HL = 'Kém'
+        TB, GPA, HL = analysis(TX,GK,CK)
         # Tạo DataFrame mới từ dictionary
         new_row = pd.DataFrame([{'ID': student_id, 'Name': name, 'Giới tính': SE, 'TX': TX, 'GK': GK, 'CK': CK, 'DRL': DRL, 'Tổng': TB, 'GPA': GPA, 'Học lực': HL}])
         
@@ -64,17 +68,33 @@ def add_student(df):
         print("❌ Lỗi: ID phải là số nguyên và Điểm số phải là số thập phân.")
         return df
 
-def change_score(df, id, type):
+def change_score(df, id, score_type):
     idx = df[df['ID'] == id].index
-    df.loc[idx, type] = float(input(f"nhập điểm {type}: "))
-    save_data(df)
+    if not idx.empty:
+        try:
+            new_val = float(input(f"Nhập điểm {score_type} mới: "))
+            df.loc[idx, score_type] = new_val
+            
+            # Tính toán lại các cột dựa trên điểm mới
+            TX = df.loc[idx, 'TX'].values[0]
+            GK = df.loc[idx, 'GK'].values[0]
+            CK = df.loc[idx, 'CK'].values[0]
+            
+            TB, GPA, HL = analysis(TX, GK, CK)
+            
+            df.loc[idx, 'Tổng'] = TB
+            df.loc[idx, 'GPA'] = GPA
+            df.loc[idx, 'Học lực'] = HL
+            
+            save_data(df)
+            print("✅ Đã cập nhật và tính toán lại xếp loại.")
+        except ValueError:
+            print("❌ Lỗi: Điểm nhập vào phải là số.")
+    return df
 
 def search_by_id(df):
     print("\n--- Tìm kiếm theo ID ---")
-    if df.empty:
-        print("⚠ Danh sách hiện đang trống.")
-        return
-        
+
     try:
         search_id = int(input("Nhập ID cần tìm: "))
         # Lọc dữ liệu
@@ -101,11 +121,12 @@ def search_by_id(df):
                         case 3: type = 'CK'
                         case 4: type = 'DRL'
                         case 5: break
-                    change_score(df, search_id, type) 
+                    df = change_score(df, search_id, type) 
         else:
             print(f"❌ Không tìm thấy học sinh có ID: {search_id}")
     except ValueError:
         print("❌ Lỗi: ID nhập vào phải là số.")
+        return df
 
 def display_all_scores(df):
     print("\n--- Danh sách học sinh ---")
@@ -140,7 +161,7 @@ def main():
         if choice == '1':
             df = add_student(df)
         elif choice == '2':
-            search_by_id(df)
+            df = search_by_id(df)
         elif choice == '3':
             display_all_scores(df)
         elif choice == '4':
